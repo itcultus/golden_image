@@ -1,0 +1,248 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+---
+# defaults file for image_builder
+
+# Blueprint variables
+ib_name: custom-image
+ib_description: A custom image built with Red Hat Image Builder
+ib_date_based_version: false
+ib_image_version: 0.0.1
+ib_vm_distro: rhel-9
+ib_groups:
+  - core
+
+# Different target images have different packages installed by default.
+# Please consult the RH documentation page about it.
+ib_target_image_format: qcow2
+
+# What repositories should we use to download image's packages?
+# Valid answers are cdn or satellite
+ib_content_provider: cdn
+ib_satellite_base_url: ''
+
+# List of dictionaries with the custom repositories
+# That will be used for during image build.
+# ib_custom_repositories:
+#   - id: k8s
+#     name: Kubernetes
+#     type: yum-baseurl
+#     distros:
+#       - rhel-8
+#     url: https://server.example.com/repos/company_internal_packages/
+#     check_gpg: false
+#     check_ssl: false
+#     system: false
+#     gpg_key: {{ lookup('path_to_gpgkey_file') }}
+ib_custom_repositories: []
+
+# List of packages to install along with core
+# ib_packages_core:
+#   - name: sudo
+#     version: 2.9.*
+ib_add_packages:
+  - name: bash-completion
+  - name: vim-enhanced
+  - name: logrotate
+  - name: virt-what
+  - name: sos
+  - name: lvm2
+  - name: unzip
+  - name: strace
+
+# List of packages to install along with core and add packages. For example
+# ipa-client
+ib_user_packages: []
+
+# List of packages to REMOVE after the installation
+ib_packages_rm_default:
+  - iwl100-firmware
+  - iwl1000-firmware
+  - iwl105-firmware
+  - iwl135-firmware
+  - iwl2000-firmware
+  - iwl2030-firmware
+  - iwl3160-firmware
+  - iwl5000-firmware
+  - iwl5150-firmware
+  - iwl6000g2a-firmware
+  - iwl6050-firmware
+  - iwl7260-firmware
+  - 1:iwl3160-firmware
+  - iwl6000g2a-firmware
+  - 1:iwl7260-firmware
+  - insights*
+  - cockpit-*
+  - NetworkManager-tui
+
+# Additional packages to remove
+ib_packages_rm_user: []
+
+ib_packages_rm: "{{ ib_packages_rm_default + ib_packages_rm_user }}"
+
+# Unless you don't want to use cloud-init for any reason, we recommend to
+# initialize a user via cloud-init and not hardcode it into the image.
+ib_users: []
+  # - ib_username: cloud-user
+  #   ib_user_password_hash: null
+  #   ib_user_ssh_key: ''
+  #   ib_user_home: /home/cloud-user
+  #   ib_user_shell: /bin/bash
+  #   ib_user_groups:
+  #     - wheel
+  #   ib_user_uid: 1000
+  #   ib_user_gid: 1000
+
+ib_timezone: UTC
+ib_ntpservers: []
+ib_languages: ['en_US.UTF-8']
+ib_keyboard: us
+ib_hostname: localhost.localdomain
+ib_kernel_append: ''
+
+# Services to enable/disasble/mask
+# The service names are systemd service units. You may specify any systemd unit
+# file accepted by systemctl enable, for example, cockpit.socket
+ib_service_enable:
+  - sshd
+
+ib_service_disable:
+  - cockpit.socket
+
+ib_service_masked: []
+
+# User defined firewalld services to enable
+ib_firewall_services_enabled_ext: []
+ib_firewall_services_enabled: "{{ ib_default_firewall_services + ib_firewall_services_enabled_ext }}"
+
+# Firewalld services to disable
+ib_firewall_services_disabled: []
+
+# Open specific firewall ports
+# ib_firewall_ports:
+#   port: 22
+#   protocol: tcp
+#   port: 123
+#   protocol: udp
+ib_firewall_ports: []
+
+
+# List of dictionaries with custom directories to create on the image
+# ib_directories:
+#   - path: /srv/websites
+#     mode: 0755
+#     user: root
+#     group: root
+#     ensure_parents: true
+ib_directories: []
+
+# List of dictionaries for adding custom files
+# NOT RECOMMENDED, unless you know what you are doing!
+# Only reasoable use of files is for the inclusion of custom CA certificates
+# ib_files:
+#   - path: /etc/pki/ca-trust/source/anchors/my_company_ca_cert.pem
+#     mode: 0644
+#     user: root
+#     group: root
+#     data: |
+#        Hello world!
+#        This is how you make a multiline string.
+ib_files: []
+
+ib_ca_file: ""
+ib_ca_file_content: ""
+
+# Partitioning variables
+ib_partitioning_mode: lvm
+ib_lvm_vg_name: RENAME_ME_AT_FIRST_BOOT
+ib_new_vg_name: ""
+ib_rename_vg_at_boot: "{{ (ib_lvm_vg_name == 'RENAME_ME_AT_FIRST_BOOT') or (ib_new_vg_name | trim != '') }}"
+
+ib_default_vg: >
+  {{
+    ib_vm_distro
+    | regex_replace('[^a-zA-Z0-9_+-]', '_')
+    | regex_replace('^_+|_$', '')
+    | regex_replace('_+', '_')
+  }}
+
+ib_partitions:
+  - type: plain
+    label: BOOT
+    mountpoint: /boot
+    fs_type: xfs
+    minsize: 1 GiB
+  - type: lvm
+    name: vg_{{ ib_lvm_vg_name | default(ib_default_vg) }}
+    minsize: 15 GiB
+    logical_volumes:
+      - name: root
+        mountpoint: /
+        minsize: 4 GiB
+        label: root
+        fs_type: xfs
+      - name: var
+        mountpoint: /var
+        minsize: 4 GiB
+        label: var
+        fs_type: xfs
+      - name: home
+        mountpoint: /home
+        minsize: 4 GiB
+        label: home
+        fs_type: xfs
+
+ib_mount_points: []
+#  - mp: /var
+#    minsize: 2Gb
+
+
+# Advanced customizations cannot be performed via Image Builder
+# You can either utilize cloud-init or a custom first boot service
+# We recommend to combine them.
+
+ib_first_boot:
+  service_name: ib_first_boot
+  unit: |
+    ConditionPathExists=/usr/local/sbin/ib_first_boot
+    Wants=network-online.target
+    After=network-online.target
+    After=cloud-init.service
+    After=osbuild-first-boot.service
+  service: |
+    Type=oneshot
+    ExecStart=/usr/local/sbin/custom-first-boot
+    ExecStartPost=mv /usr/local/sbin/ib_first_boot /usr/local/sbin/ib_first_boot.done
+    ExecStopPost=/usr/bin/chmod 600 /usr/local/sbin/ib_first_boot
+  install: |
+    WantedBy=multi-user.target
+
+# General variables
+ib_configuration_base_dir: /srv/osbuild
+
+# The directory on which we will store our official repositoris overrides.
+ib_official_overrides_dir: /etc/osbuild-composer/repositories/
+ib_official_repos_dir: /usr/share/osbuild-composer/repositories/
+
+# Other variables
+# Default filesystem
+ib_default_fs: xfs
+
+# User that will run the process
+ib_user: "{{ ansible_ssh_user }}"
+
+# Parent directory for all blueprints
+ib_blueprint_dir: ib_blueprints
+
+# Directory on which we store the downloaded images
+# By default, this will be under the remote user's home directory,
+# eg /home/cloud-user/images
+ib_dl_dir: images
+
+# Use become when we create and store the downloaded images
+ib_dl_become: false
+
+# Delete image after download
+ib_clean_build_image: false
+
+# Delete blueprint after build
+ib_clean_blueprint: false

@@ -1,0 +1,43 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+---
+# tasks file for image_builder/tasks/02_build_image.yml
+- name: Block for when
+  when: "ib_name != 'custom-image'"
+  block:
+    - name: Build image
+      ansible.builtin.command:
+        cmd: >-
+          composer-cli
+          compose start
+          {{ ib_name }}
+          {{ ib_target_image_format }}
+      register: __compose_start_out
+      changed_when: true
+
+    - name: Retrieve image UUID
+      ansible.builtin.set_fact:
+        __image_uuid: "{{ (__compose_start_out.stdout_lines | select('search', '^Compose ') | first).split()[1] }}"
+
+    - name: Wait for image build to complete
+      ansible.builtin.command:
+        cmd: >-
+          composer-cli
+          compose info
+          {{ __image_uuid }}
+      register: __compose_status
+      failed_when: "'not a valid build' in __compose_status.stderr or 'FAILED' in __compose_status.stdout"
+      changed_when: false
+      ignore_errors: true
+      until: "'not a valid build' in __compose_status.stderr or 'FAILED' in __compose_status.stdout or 'FINISHED' in __compose_status.stdout"
+      retries: 60
+      delay: 30
+
+    - name: Block for failed
+      when: "'not a valid build' in __compose_status.stderr or 'FAILED' in __compose_status.stdout"
+      block:
+        - name: Display failed build logs
+          ansible.builtin.include_tasks: 99_display_failed_logs.yml
+
+        - name: Fail if build not successful
+          ansible.builtin.fail:
+            msg: "Build failed."

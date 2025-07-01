@@ -1,0 +1,22 @@
+---
+# galaxy.yml
+namespace: itcultus
+name: golden_images
+version: 1.0.0
+readme: README.md
+authors:
+  - Peter Tselios <myemail@mycompany.com>
+description: >-
+  A collection for building and managing RHEL golden images, including the image_builder role.
+license_file: LICENSE
+tags:
+  - goldenimages
+  - imagebuilder
+  - vmimage
+  - templates
+  - vmtemplates
+  - imagebuilder
+
+repository: https://github.com/itcultus/golden_images
+
+dependencies: {}

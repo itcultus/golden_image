@@ -1,0 +1,185 @@
+name = "{{ ib_name | default('custom-image') }}"
+description = "{{ ib_description | default('A custom image built with Red Hat Image Builder') }}"
+version = "{{ __ib_image_version | default(ib_image_version) | default('0.0.1') }}"
+distro = "{{ ib_vm_distro }}"
+modules = []
+
+{% for __pkg_grp in ib_groups %}
+[[groups]]
+name = "{{ __pkg_grp}}"
+{% endfor %}
+
+{% if (ib_add_packages + ib_user_packages) | length > 0 %}
+{% for pkg in ib_add_packages + ib_user_packages %}
+
+[[packages]]
+name = "{{ pkg.name }}"
+version = "{{  pkg.version | default('*') }}"
+{% endfor %}
+{% endif %}
+
+[customizations]
+hostname = "{{ ib_hostname }}"
+partitioning_mode = "{{ ib_partitioning_mode }}"
+
+[customizations.timezone]
+timezone = "{{ ib_timezone }}"
+ntpservers = {{ ib_ntpservers | default("[]") | to_json }}
+
+[customizations.locale]
+languages = {{ ib_languages | to_json }}
+keyboard = "{{ ib_keyboard }}"
+
+[customizations.kernel]
+append = "{{ ib_kernel_append }}"
+
+{% for _user in ib_users %}
+[[customizations.user]]
+name = "{{ _user.ib_username }}"
+{% if _user.ib_user_password_hash %}
+password = "{{ _user.ib_user_password_hash }}"
+{% endif %}
+{% if _user.ib_user_ssh_key %}
+key = "{{ _user.ib_user_ssh_key }}"
+{% endif %}
+home = "{{ _user.ib_user_home | default('/home/' ~ _user.ib_username) }}"
+shell = "{{ _user.ib_user_shell | default('/bin/bash') }}"
+{% if _user.ib_user_groups %}
+groups = {{ _user.ib_user_groups | to_json }}
+{% endif %}
+uid = {{ _user.ib_user_uid }}
+gid = {{ _user.ib_user_gid }}
+{% endfor %}
+
+[customizations.firewall.services]
+enabled = {{ ib_firewall_services_enabled | default([]) | to_json }}
+disabled = {{ ib_firewall_services_disabled | default([]) | to_json }}
+
+{% if ib_firewall_ports | length %}
+[[customizations.firewall.ports]]
+ports = "[
+{%- for __port in ib_firewall_ports -%}
+"{{ __port.port ~ ':' ~ __port.protocol }}"{% if not loop.last %},{% endif %}
+{%- endfor -%}
+]"
+{% endif %}
+
+{% if ib_partitioning_mode | default('plain') == 'lvm' %}
+{% for _part in ib_partitions %}
+
+[[customizations.disk.partitions]]
+{% if _part.type | default('plain') == 'plain' %}
+type = "{{ _part.type }}"
+label = "{{ _part.label }}"
+{% if _part.fs_type != 'swap' %}mountpoint = "{{ _part.mountpoint }}"
+{% endif %}
+fs_type = "{{ _part.fs_type }}"
+minsize = "{{ _part.minsize | default(4) }}"
+{% endif %}
+{% if _part.type | default('plain') == 'lvm' %}
+type = "{{ _part.type }}"
+name = "{{ _part.name | default(ib_default_vg) }}"
+minsize = "{{ _part.minsize | default(4) }}"
+
+{% for _lv in _part.logical_volumes %}
+
+[[customizations.disk.partitions.logical_volumes]]
+name = "{{ _lv.name }}"
+label = "{{ _lv.label | default('lv' ~ _lv.name) }}"
+{% if _lv.fs_type | default('') != 'swap' %}
+mountpoint = "{{ _lv.mountpoint }}"
+{% endif %}
+fs_type = "{{ _lv.fs_type | default(ib_default_fs) }}"
+minsize = "{{ _lv.minsize }}"
+{% endfor %}
+{% endif %}
+{% endfor %}
+
+{% endif %}
+
+{% if ib_partitioning_mode | default('plain') == 'autolvm' %}
+{% if ib_mount_points | length %}
+{% for __mp in ib_mount_points %}
+[[customizations.filesystem]]
+mountpoint = "{{ __mp.mp }}"
+minsize = {{ __mp.minsize }}
+{% endfor %}
+{% endif %}
+{% endif %}
+
+
+{% set ib_service_enable = ib_service_enable + ([ib_first_boot.service_name] if ib_first_boot is defined and ib_first_boot.service_name is defined else []) %}
+{% if ib_service_enable | length or ib_service_disable | length or ib_service_masked | length %}
+[customizations.services]
+{% if combined_service_enable | length -%}
+enabled = {{ ib_service_enable | to_json }}
+{% endif %}
+{% if ib_service_disable | length -%}
+disabled = {{ ib_service_disable | to_json }}
+{% endif %}
+{% if ib_service_masked | length -%}
+masked = {{ ib_service_masked | to_json }}
+{% endif %}
+{% endif %}
+
+{% if ib_subscription_activation_key is defined or ib_subscription_auto | default(false) | bool %}
+[customizations.subscription]
+activation-key = "{{ ib_subscription_activation_key }}"
+organization = "{{ ib_subscription_organization }}"
+{% elif ib_subscription_auto | default(false) %}
+auto-registration = true
+{% endif %}
+
+{% for __dir in ib_directories %}
+[[customizations.directories]]
+path = "{{ __dir.path}}"
+mode = "{{ __dir.mode | default('0755') }}"
+user = "{{ __dir.user | default('root') }}"
+group = "{{ __dir.group| default('root') }}"
+ensure_parents = {{ __dir.ensure_parents | default(true) | lower }}
+{% endfor %}
+
+{% for __file in ib_files %}
+[[customizations.files]]
+path = "{{ __file.path}}"
+mode = "{{ __file.mode | default('0644') }}"
+user = "{{ __file.user | default('root') }}"
+group = "{{ __file.group| default('root') }}"
+data = """
+{{ __file.data }}
+""""
+{% endfor %}
+
+{% if 'rhel' in ib_vm_distro %}
+# RHEL-specific customizations
+[customizations.rhsm.config.dnf_plugins.product_id]
+enabled = true
+
+[customizations.rhsm.config.dnf_plugins.subscription_manager]
+enabled = true
+
+[customizations.rhsm.config.subscription_manager.rhsm]
+manage_repos = true
+auto_enable_yum_plugins = false
+
+[customizations.rhsm.config.subscription_manager.rhsmcertd]
+auto_registration = true
+{% endif %}
+
+{% if ib_packages_rm | length or (ib_rename_vg_at_boot | bool and ib_partitioning_mode | default('') == 'lvm') %}
+{% if ib_first_boot.service_name is defined %}
+# First boot customizations
+[[customizations.files]]
+path = "/etc/systemd/system/{{ ib_first_boot.service_name }}.service"
+data = """
+[Unit]
+{{ ib_first_boot.unit }}
+
+[Service]
+{{ ib_first_boot.service }}
+
+[Install]
+{{ ib_first_boot.install }}
+"""
+{% endif %}
+{% endif %}

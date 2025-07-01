@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+---
+# tasks file for image_builder/tasks/01_deploy_blueprints.yml
+
+- name: Blueprint is present
+  ansible.builtin.template:
+    src: blueprint.toml.j2
+    dest: "{{ __target_dir }}/{{ ib_name }}.toml"
+    mode: "0644"
+    owner: "{{ ib_user }}"
+    group: "{{ ib_user }}"
+  when: "ib_name != 'custom-image'"
+  vars:
+    __target_dir: "{{ ansible_user_dir }}/{{ ib_blueprint_dir }}/{{ ib_name }}_{{ ib_image_version }}"
+  notify: Load blueprint
+
+- name: Flush handlers
+  ansible.builtin.meta: flush_handlers

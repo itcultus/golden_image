@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+---
+# tasks file for image_builder
+
+- name: Pre-flight
+  ansible.builtin.import_tasks: 00_pre_flight.yml
+
+- name: Deploy blueprints
+  ansible.builtin.import_tasks: 01_deploy_blueprints.yml
+
+- name: Build image
+  ansible.builtin.import_tasks: 02_build_image.yml
+
+- name: Download image
+  ansible.builtin.import_tasks: 03_download_image.yml

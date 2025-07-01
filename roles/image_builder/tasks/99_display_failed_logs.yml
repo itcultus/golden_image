@@ -1,0 +1,37 @@
+# This file is based on work licensed under the MIT License:
+# https://github.com/myllynen/rhel-image/blob/master/roles/rhel_image/tasks/build_logs_display.yml
+#
+# Copyright (c) 2025 Marko Myllynen
+# SPDX-License-Identifier: MIT
+---
+- name: Create temporary directory for build logs
+  ansible.builtin.tempfile:
+    state: directory
+    suffix: .logs
+  register: __logs_directory
+
+- name: Fetch build logs from osbuilder
+  ansible.builtin.command:
+    cmd: composer-cli compose logs {{ build_uuid }}
+    chdir: "{{ __logs_directory.path }}"
+  changed_when: true
+
+- name: Extract build logs archive
+  ansible.builtin.unarchive:
+    src: "{{ __logs_directory.path }}/{{ build_uuid }}-logs.tar"
+    dest: "{{ __logs_directory.path }}"
+    remote_src: true
+
+- name: Read complete build logs
+  ansible.builtin.slurp:
+    src: "{{ __logs_directory.path + '/logs/osbuild.log' }}"
+  register: log_content
+
+- name: Display complete build logs
+  ansible.builtin.debug:
+    msg: "{{ log_content.content | b64decode }}"
+
+- name: Remove temporary logs directory
+  ansible.builtin.file:
+    path: "{{ __logs_directory.path }}"
+    state: absent

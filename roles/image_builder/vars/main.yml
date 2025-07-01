@@ -1,0 +1,6 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+---
+# vars file for image_builder
+
+ib_default_firewall_services:
+  - ssh

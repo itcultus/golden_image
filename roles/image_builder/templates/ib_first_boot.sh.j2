@@ -1,0 +1,39 @@
+#!/usr/local/bash
+#
+# First Boot Script for Red Hat Enterprise Linux 9 and later
+#
+# Copyright (C) 2025 ITCUltus LTD
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You may find a copy of the GNU General Public License
+# either at /usr/share/licenses/bash/COPYING or you may visit
+# <https://www.gnu.org/licenses/>.
+#
+# Description:
+# This script is intended to be executed once at the first boot of a RHEL 9+ system.
+
+set -e
+
+sanitize_hostname() {
+    echo "$1" | sed 's/[^a-zA-Z0-9_+-]/_/g' | sed 's/^_\+\|_\+$//g' | sed 's/_\+/_/g'
+}
+
+{% if ib_packages_rm | length %}
+dnf --noplugins --disablerepo=* erase -y {{ ib_packages_rm | join(',') }}
+{% endif %}
+
+{% if ib_rename_vg_at_boot | bool and ib_partitioning_mode | default('') == 'lvm' %}
+ib_new_vg_name=$(sanitize_hostname $(hostname -s))
+vgrename vg_{{ ib_lvm_vg_name | default(ib_default_vg) }} "vg_$(ib_new_vg_name)"
+{% endif %}
+
+exit 0

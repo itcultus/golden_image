@@ -1,0 +1,25 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+---
+# tasks file for image_builder/tasks/03_download_image.yml
+
+- name: Block for when
+  when:
+    - __image_uuid is defined
+    - __image_uuid | length  == 32
+  block:
+    - name: Download image from osbuilder
+      ansible.builtin.command:
+        cmd: >
+          composer-cli
+          compose
+          image
+          {{ __image_uuid }}
+        chdir: "{{ ib_dl_dir }}"
+      register: __im_file
+      changed_when: true
+
+    - name: Image is removed from osbuilder
+      ansible.builtin.command: composer-cli compose delete {{ __image_uuid }}
+      changed_when: true
+      when:
+        - ib_clean_build_image | bool

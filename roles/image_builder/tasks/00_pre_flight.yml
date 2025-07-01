@@ -1,0 +1,98 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+---
+# tasks file for image_builder/tasks/00_pre_flight.yml
+- name: Check if we need to unpack an external loop variable
+  ansible.builtin.set_fact:
+    "{{ item.key }}": "{{ item.value }}"
+  when: __image_data is defined
+  loop: "{{ __image_data | dict2items }}"
+  loop_control:
+    label: "Add fact for variable {{ item.key }}"
+
+- name: Gather facts
+  ansible.builtin.setup:
+    gather_subset:
+      - '!all'
+      - '!min'
+      - 'user_dir'
+  when: ib_use_remote_user | default(true) | bool
+
+- name: Repository override directory exists
+  become: true
+  ansible.builtin.file:
+    path: /etc/osbuild-composer/repositories
+    state: directory
+    mode: "0755"
+    owner: root
+    group: root
+
+# This is based on the https://access.redhat.com/solutions/5773421
+- name: Block for when
+  when:
+    - "'satellite' in ib_content_provider"
+    - ib_satellite_base_url is defined
+    - ib_satellite_base_url != ''
+  block:
+    # - name: Check if a repository override already exists
+    #   ansible.builtin.find:
+    #     paths:
+    #       - /etc/osbuild-composer/repositories
+    #     patterns: "{{ ib_vm_distro }}.json"
+    #     limit: 1
+    #   register: __repo_override
+
+    - name: Repository for the distribution is present
+      ansible.builtin.copy:
+        remote_src: true
+        src: "{{ ib_official_repos_dir }}/{{ ib_vm_distro }}.json"
+        dest: "{{ ib_official_overrides_dir }}"
+        owner: root
+        group: root
+        mode: "0644"
+      # when: __repo_override.matched == 0
+
+    - name: Replace CDN url with Satellite URL
+      ansible.builtin.replace:
+        path: "{{ ib_official_repos_dir }}/{{ ib_vm_distro }}.json"
+        regexp: 'cdn\.redhat\.com'
+        replace: "{{ ib_satellite_base_url }}"
+      notify: Restart composer
+
+- name: Add custom Image Builder repositories
+  ansible.builtin.template:
+    src: repo_override.json.j2
+    dest: "{{ ib_official_overrides_dir }}/{{ repo.name }}.json"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart composer
+  loop: "{{ ib_custom_repositories | default([]) }}"
+  loop_control:
+    loop_var: repo
+    label: "{{ repo.name }}"
+
+- name: Flush handlers
+  ansible.builtin.meta: flush_handlers
+
+- name: Ensure blueprints directory exists
+  ansible.builtin.file:
+    name: "{{ ansible_user_dir }}/{{ ib_blueprint_dir }}/{{ ib_name }}_{{ ib_image_version }}"
+    state: directory
+    recurse: true
+    owner: "{{ ib_user }}"
+    group: "{{ ib_user }}"
+    mode: "0755"
+
+- name: Ensure download images directory exists
+  ansible.builtin.file:
+    path: "{{ ansible_user_dir }}/{{ ib_dl_dir }}"
+    state: directory
+    recurse: true
+    owner: "{{ ib_user }}"
+    group: "{{ ib_user }}"
+    mode: "0755"
+
+- name: Generate a date in semantic format as image version
+  ansible.builtin.set_fact:
+    __ib_image_version: "{{ lookup('ansible.builtin.date', '%Y.%m.%d') }}"
+  when: ib_date_based_version | bool

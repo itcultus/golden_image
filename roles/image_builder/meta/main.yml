@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+---
+galaxy_info:
+  author: Peter Tselios
+  description: >-
+    The use is used to build VM images using the Image Builder from RHEL.
+
+  company: ITCultus LTD
+
+  license: GPL-3.0
+
+  min_ansible_version: "2.15"
+
+  platforms:
+    - name: "EL"
+      versions:
+        - "8"
+        - "9"
+        - "10"
+
+  galaxy_tags:
+    - imagebuilder
+    - imagebuilder
+    - goldenimage
+    - vmimage
+
+dependencies: []

@@ -1,0 +1,16 @@
+*.retry
+*.log
+*[_.]local[_.]*
+.idea
+*.kate-swp
+.*.swp
+*~
+# macbook auto generated file
+*[_.]DS_Store
+# auto generated python files after compilation
+*[_.]pyc
+*[_.]pyo
+*[_/]__pycache__/*
+.kateproject
+/files/
+collections/*
