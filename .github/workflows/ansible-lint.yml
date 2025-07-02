@@ -1,0 +1,49 @@
+# .github/workflows/ansible-lint.yml
+
+name: Ansible Lint
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  ansible-lint:
+    name: Ansible Lint Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13.3'
+
+      - name: Install Ansible and ansible-lint
+        run: |
+          pip install "ansible-core==2.15.13" "ansible-lint==25.5.0"
+
+      - name: Get modified files (YAML Only)
+        id: detect_changes
+        run: |
+          EXCLUDE_DIRS="templates/|library/|files/"
+          EXCLUDE_FILES="\\.git.*|\\.ansible.*"
+
+          MODFILE_LIST=$(git diff --name-only --diff-filter=AM origin/${{ github.base_ref }} | grep -E '\.ya?ml$' | grep -vE "$EXCLUDE_DIRS|$EXCLUDE_FILES" || true)
+
+          if [ -z "$MODFILE_LIST" ]; then
+            echo "No files to lint. Exiting."
+            echo "HAS_FILES=false" >> $GITHUB_ENV
+          else
+            echo "Files to lint:"
+            echo "$MODFILE_LIST"
+            echo "MODFILE_LIST=\"$MODFILE_LIST\"" >> $GITHUB_ENV
+            echo "HAS_FILES=true" >> $GITHUB_ENV
+          fi
+
+      - name: Run ansible-lint
+        if: env.HAS_FILES == 'true'
+        run: |
+          ansible-lint --offline --profile production --skip-list=var-naming ${MODFILE_LIST}
