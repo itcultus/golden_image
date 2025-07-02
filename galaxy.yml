@@ -2,7 +2,7 @@
 # galaxy.yml
 namespace: itcultus
 name: golden_images
-version: 1.0.0
+version: 1.0.1
 readme: README.md
 authors:
   - Peter Tselios <myemail@mycompany.com>
@@ -17,6 +17,6 @@ tags:
   - vmtemplates
   - imagebuilder
 
-repository: https://github.com/itcultus/golden_images
+repository: https://github.com/itcultus/golden_image
 
 dependencies: {}
