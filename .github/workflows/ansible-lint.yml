@@ -21,7 +21,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.13.3'
+          python-version: '3.x'
 
       - name: Install Ansible and ansible-lint
         run: |
@@ -31,7 +31,7 @@ jobs:
         id: detect_changes
         run: |
           EXCLUDE_DIRS="templates/|library/|files/"
-          EXCLUDE_FILES="\\.git.*|\\.ansible.*"
+          EXCLUDE_FILES="\\.git.*|\\.ansible.*\\..*lint.*"
 
           MODFILE_LIST=$(git diff --name-only --diff-filter=AM origin/${{ github.base_ref }} | grep -E '\.ya?ml$' | grep -vE "$EXCLUDE_DIRS|$EXCLUDE_FILES" || true)
 
@@ -41,11 +41,6 @@ jobs:
           else
             echo "Files to lint:"
             echo "$MODFILE_LIST"
-            echo "MODFILE_LIST=\"$MODFILE_LIST\"" >> $GITHUB_ENV
-            echo "HAS_FILES=true" >> $GITHUB_ENV
+            echo ""
+            ansible-lint --offline --profile production --skip-list=var-naming ${MODFILE_LIST}
           fi
-
-      - name: Run ansible-lint
-        if: env.HAS_FILES == 'true'
-        run: |
-          ansible-lint --offline --profile production --skip-list=var-naming ${MODFILE_LIST}
