@@ -1,0 +1,9 @@
+---
+# .ansible-lint
+
+profile: production
+
+skip_list:
+  - var-naming
+
+offline: true

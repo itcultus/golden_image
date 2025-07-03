@@ -1,0 +1,43 @@
+---
+# .yamllint
+extends: default
+
+rules:
+  # Basic YAML formatting rules
+  line-length:
+    max: 160    # Recommended for readability
+
+  # Require indentation to be consistent with 2 spaces (Ansible standard)
+  indentation:
+    spaces: consistent
+    indent-sequences: true
+
+  # Ensure files end with a newline for POSIX compatibility
+  document-end: disable
+
+  # Enforce best practices in key names and values
+  truthy:
+    allowed-values:
+      - 'true'
+      - 'false'
+    check-keys: true
+
+  # Check for consistent key ordering and clear structure
+  key-duplicates: enable
+
+  # Ensure consistent colons with a space following each colon
+  colons:
+    max-spaces-after: 1
+    max-spaces-before: 0
+
+  comments:
+    min-spaces-from-content: 1
+
+  comments-indentation: false
+
+  braces:
+    max-spaces-inside: 1
+
+  octal-values:
+    forbid-implicit-octal: true
+    forbid-explicit-octal: true
