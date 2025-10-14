@@ -22,7 +22,7 @@
   ansible.builtin.file:
     path: /etc/osbuild-composer/repositories
     state: directory
-    mode: "0755"
+    mode: u=rwx,g=rx,o=rx
     owner: root
     group: root
 
@@ -48,7 +48,7 @@
         dest: "{{ ib_official_overrides_dir }}"
         owner: root
         group: root
-        mode: "0644"
+        mode: u=rw,g=r,o=r
       # when: __repo_override.matched == 0
 
     - name: Replace CDN url with Satellite URL
@@ -64,7 +64,7 @@
     dest: "{{ ib_official_overrides_dir }}/{{ repo.name }}.json"
     owner: root
     group: root
-    mode: "0644"
+    mode: u=rw,g=r,o=r
   notify: Restart composer
   loop: "{{ ib_custom_repositories | default([]) }}"
   loop_control:
@@ -81,7 +81,7 @@
     recurse: true
     owner: "{{ ib_user }}"
     group: "{{ ib_user }}"
-    mode: "0755"
+    mode: u=rwx,g=rx,o=rx
 
 - name: Ensure download images directory exists
   ansible.builtin.file:
@@ -90,7 +90,7 @@
     recurse: true
     owner: "{{ ib_user }}"
     group: "{{ ib_user }}"
-    mode: "0755"
+    mode: u=rwx,g=rx,o=rx
 
 - name: Generate a date in semantic format as image version
   ansible.builtin.set_fact:
