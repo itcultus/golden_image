@@ -6,7 +6,7 @@
   ansible.builtin.template:
     src: blueprint.toml.j2
     dest: "{{ __target_dir }}/{{ ib_name }}.toml"
-    mode: "0644"
+    mode: u=rw,g=r,o=r
     owner: "{{ ib_user }}"
     group: "{{ ib_user }}"
   when: "ib_name != 'custom-image'"
