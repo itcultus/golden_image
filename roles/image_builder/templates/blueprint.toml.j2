@@ -11,7 +11,6 @@ name = "{{ __pkg_grp}}"
 
 {% if (ib_add_packages + ib_user_packages) | length > 0 %}
 {% for pkg in ib_add_packages + ib_user_packages %}
-
 [[packages]]
 name = "{{ pkg.name }}"
 version = "{{  pkg.version | default('*') }}"
@@ -66,7 +65,6 @@ ports = "[
 
 {% if ib_partitioning_mode | default('plain') == 'lvm' %}
 {% for _part in ib_partitions %}
-
 [[customizations.disk.partitions]]
 {% if _part.type | default('plain') == 'plain' %}
 type = "{{ _part.type }}"
@@ -82,7 +80,6 @@ name = "{{ _part.name | default(ib_default_vg) }}"
 minsize = "{{ _part.minsize | default(4) }}"
 
 {% for _lv in _part.logical_volumes %}
-
 [[customizations.disk.partitions.logical_volumes]]
 name = "{{ _lv.name }}"
 label = "{{ _lv.label | default('lv' ~ _lv.name) }}"
@@ -107,11 +104,10 @@ minsize = {{ __mp.minsize }}
 {% endif %}
 {% endif %}
 
-
 {% set ib_service_enable = ib_service_enable + ([ib_first_boot.service_name] if ib_first_boot is defined and ib_first_boot.service_name is defined else []) %}
 {% if ib_service_enable | length or ib_service_disable | length or ib_service_masked | length %}
 [customizations.services]
-{% if combined_service_enable | length -%}
+{% if ib_service_enable | default('') | length -%}
 enabled = {{ ib_service_enable | to_json }}
 {% endif %}
 {% if ib_service_disable | length -%}
@@ -120,14 +116,6 @@ disabled = {{ ib_service_disable | to_json }}
 {% if ib_service_masked | length -%}
 masked = {{ ib_service_masked | to_json }}
 {% endif %}
-{% endif %}
-
-{% if ib_subscription_activation_key is defined or ib_subscription_auto | default(false) | bool %}
-[customizations.subscription]
-activation-key = "{{ ib_subscription_activation_key }}"
-organization = "{{ ib_subscription_organization }}"
-{% elif ib_subscription_auto | default(false) %}
-auto-registration = true
 {% endif %}
 
 {% for __dir in ib_directories %}
@@ -153,17 +141,17 @@ data = """
 {% if 'rhel' in ib_vm_distro %}
 # RHEL-specific customizations
 [customizations.rhsm.config.dnf_plugins.product_id]
-enabled = true
+enabled = {{ ib_subscription_enable_product_id | default(true) | lower }}
 
 [customizations.rhsm.config.dnf_plugins.subscription_manager]
-enabled = true
+enabled = {{ ib_subscription_enable_subscription_manager | default(true) | lower }}
 
 [customizations.rhsm.config.subscription_manager.rhsm]
-manage_repos = true
-auto_enable_yum_plugins = false
+manage_repos = {{ ib_subscription_sub_mng_repos | default(true) | lower }}
+auto_enable_yum_plugins = {{ ib_subscription_sub_mng_plugins | default(true) | lower }}
 
 [customizations.rhsm.config.subscription_manager.rhsmcertd]
-auto_registration = true
+auto_registration = {{ ib_subscription_auto | default(false) | lower }}
 {% endif %}
 
 {% if ib_packages_rm | length or (ib_rename_vg_at_boot | bool and ib_partitioning_mode | default('') == 'lvm') %}
@@ -177,9 +165,18 @@ data = """
 
 [Service]
 {{ ib_first_boot.service }}
-
+{% if ib_first_boot.install is defined %}
 [Install]
 {{ ib_first_boot.install }}
+{% endif %}
 """
+[[customizations.files]]
+path = "/usr/local/sbin/ib_first_boot"
+mode = "0750"
+user = "root"
+group = "root"
+data = '''
+{{ lookup('template', 'ib_first_boot.sh.j2') }}
+'''
 {% endif %}
 {% endif %}

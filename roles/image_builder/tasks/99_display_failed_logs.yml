@@ -12,13 +12,13 @@
 
 - name: Fetch build logs from osbuilder
   ansible.builtin.command:
-    cmd: composer-cli compose logs {{ build_uuid }}
+    cmd: composer-cli compose logs {{ __image_uuid }}
     chdir: "{{ __logs_directory.path }}"
   changed_when: true
 
 - name: Extract build logs archive
   ansible.builtin.unarchive:
-    src: "{{ __logs_directory.path }}/{{ build_uuid }}-logs.tar"
+    src: "{{ __logs_directory.path }}/{{ __image_uuid }}-logs.tar"
     dest: "{{ __logs_directory.path }}"
     remote_src: true
 

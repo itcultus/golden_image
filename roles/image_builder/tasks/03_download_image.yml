@@ -5,18 +5,37 @@
 - name: Block for when
   when:
     - __image_uuid is defined
-    - __image_uuid | length  == 32
+    - __image_uuid | length  == 36
   block:
+    - name: Block for when overwrite
+      when: __overwrite_img | default(ib_overwrite_image) | default(false) | bool
+      block:
+        - name: Check if image exists
+          ansible.builtin.stat:
+            path: "{{ __img_name }}"
+          register: __image_stat
+
+        - name: Remove image if exists
+          ansible.builtin.file:
+            path: "{{ __img_name }}"
+            state: absent
+          when:
+            - __image_stat.stat.exists | default(false)
+
     - name: Download image from osbuilder
       ansible.builtin.command:
-        cmd: >
+        cmd: >-
           composer-cli
           compose
           image
           {{ __image_uuid }}
-        chdir: "{{ ib_dl_dir }}"
+          --filename
+          {{ __img_name | replace(' ', '') }}
       register: __im_file
       changed_when: true
+      when: >-
+        (__overwrite_img | default(ib_overwrite_image) | default(false) | bool) or
+        (not (__image_stat.stat.exists | default(false)))
 
     - name: Image is removed from osbuilder
       ansible.builtin.command: composer-cli compose delete {{ __image_uuid }}

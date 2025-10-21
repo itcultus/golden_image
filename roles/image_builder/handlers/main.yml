@@ -7,12 +7,16 @@
     name: osbuild-composer
     state: restarted
 
-- name: Load blueprint
+- name: Load the blueprint
   ansible.builtin.command:
     cmd: >
       composer-cli
       blueprints
-      push {{ __target_dir }}/{{ ib_name }}.toml
+      push {{ __ib_bp_full_path }}
   changed_when: true
-  vars:
-    __target_dir: "{{ ansible_user_dir }}/{{ ib_blueprint_dir }}/{{ ib_name }}_{{ ib_image_version }}"
+  listen: Load blueprint
+
+- name: Define overwrite variable
+  ansible.builtin.set_fact:
+    __overwrite_img: true
+  listen: Load blueprint
