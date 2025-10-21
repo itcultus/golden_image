@@ -1,4 +1,4 @@
-#!/usr/local/bash
+#!/usr/bin/bash
 #
 # First Boot Script for Red Hat Enterprise Linux 9 and later
 #
@@ -28,12 +28,16 @@ sanitize_hostname() {
 }
 
 {% if ib_packages_rm | length %}
-dnf --noplugins --disablerepo=* erase -y {{ ib_packages_rm | join(',') }}
+dnf --noplugins --disablerepo=* erase -y {{ ib_packages_rm | join(' ') }}
 {% endif %}
-
 {% if ib_rename_vg_at_boot | bool and ib_partitioning_mode | default('') == 'lvm' %}
-ib_new_vg_name=$(sanitize_hostname $(hostname -s))
-vgrename vg_{{ ib_lvm_vg_name | default(ib_default_vg) }} "vg_$(ib_new_vg_name)"
+IB_NEW_VG_NAME=$(sanitize_hostname $(hostname -s))
+logger "Renaming Volume Group name to ${IB_NEW_VG_NAME}"
+vgrename vg_{{ ib_lvm_vg_name | default(ib_default_vg) }} "vg_${IB_NEW_VG_NAME}" && \
+systemctl disable {{ ib_first_boot.service_name }} && \
+mv /usr/local/sbin/ib_first_boot /usr/local/sbin/ib_first_boot.done && \
+/usr/bin/chmod 600 /usr/local/sbin/ib_first_boot.done && \
+dracut -f && systemctl --no-block reboot
 {% endif %}
 
 exit 0

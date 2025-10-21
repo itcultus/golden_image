@@ -5,13 +5,11 @@
 - name: Blueprint is present
   ansible.builtin.template:
     src: blueprint.toml.j2
-    dest: "{{ __target_dir }}/{{ ib_name }}.toml"
-    mode: u=rw,g=r,o=r
+    dest: "{{ __ib_bp_full_path }}"
+    mode: "0644"
     owner: "{{ ib_user }}"
     group: "{{ ib_user }}"
   when: "ib_name != 'custom-image'"
-  vars:
-    __target_dir: "{{ ansible_user_dir }}/{{ ib_blueprint_dir }}/{{ ib_name }}_{{ ib_image_version }}"
   notify: Load blueprint
 
 - name: Flush handlers

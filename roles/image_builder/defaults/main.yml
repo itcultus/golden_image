@@ -47,7 +47,6 @@ ib_add_packages:
   - name: sos
   - name: lvm2
   - name: unzip
-  - name: strace
 
 # List of packages to install along with core and add packages. For example
 # ipa-client
@@ -73,6 +72,9 @@ ib_packages_rm_default:
   - insights*
   - cockpit-*
   - NetworkManager-tui
+  - geolite2*
+  - gsettings-desktop-schemas
+  - webkit2gtk3
 
 # Additional packages to remove
 ib_packages_rm_user: []
@@ -124,7 +126,6 @@ ib_firewall_services_disabled: []
 #   port: 123
 #   protocol: udp
 ib_firewall_ports: []
-
 
 # List of dictionaries with custom directories to create on the image
 # ib_directories:
@@ -204,17 +205,19 @@ ib_first_boot:
   service_name: ib_first_boot
   unit: |
     ConditionPathExists=/usr/local/sbin/ib_first_boot
-    Wants=network-online.target
-    After=network-online.target
-    After=cloud-init.service
-    After=osbuild-first-boot.service
+    After=network-online.target cloud-final.service
+    Before=sshd.service
+    Wants=cloud-final.service
   service: |
     Type=oneshot
-    ExecStart=/usr/local/sbin/custom-first-boot
+    ExecStart=/usr/local/sbin/ib_first_boot
     ExecStartPost=mv /usr/local/sbin/ib_first_boot /usr/local/sbin/ib_first_boot.done
-    ExecStopPost=/usr/bin/chmod 600 /usr/local/sbin/ib_first_boot
+    ExecStopPost=/usr/bin/chmod 600 /usr/local/sbin/ib_first_boot.done
+    RemainAfterExit=no
+    StandardOutput=journal
+    StandardError=journal
   install: |
-    WantedBy=multi-user.target
+    WantedBy=cloud-init.target
 
 # General variables
 ib_configuration_base_dir: /srv/osbuild
